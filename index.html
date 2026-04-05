@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>げんちゃんのアフター一本勝負</title>
+  <meta name="description" content="スナック嬢ユンちゃんとの真剣勝負！アフターを勝ち取れるか、それとも破産か。チャット型スナック・シミュレーター。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Orbitron:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- タイトル画面 -->
+  <div id="title-screen" class="screen active">
+    <div class="title-bg"></div>
+    <div class="title-overlay"></div>
+    <div class="title-content">
+      <div class="title-neon">スナック フィリピーナ</div>
+      <h1 class="title-main">げんちゃんの<br>アフター一本勝負</h1>
+      <p class="title-sub">〜 酔いしれる夜の駆け引き 〜</p>
+      <div class="title-budget-info">
+        <span class="budget-label">💴 財布の中身</span>
+        <span class="budget-amount" id="title-budget">¥15,000</span>
+      </div>
+      <button id="start-btn" class="btn-start">入店する</button>
+      <p class="title-warning">⚠️ このゲームはフィクションです</p>
+    </div>
+  </div>
+
+  <!-- メインゲーム画面 -->
+  <div id="game-screen" class="screen">
+    <!-- 背景 -->
+    <div class="game-bg" id="game-bg"></div>
+    <div class="game-bg-overlay"></div>
+
+    <!-- ユンちゃん立ち絵 -->
+    <div class="character-area">
+      <img id="yun-portrait" src="image/yun_normal.png" alt="ユンちゃん" class="yun-portrait" />
+      <div class="yun-aura" id="yun-aura"></div>
+    </div>
+
+    <!-- HUD（ステータス表示） -->
+    <div class="hud">
+      <div class="hud-bill">
+        <span class="hud-icon">💳</span>
+        <span class="hud-label">請求額</span>
+        <span class="hud-value" id="bill-display">¥0</span>
+      </div>
+      <div class="hud-score">
+        <span class="hud-icon">❤️</span>
+        <span class="hud-label">好感度</span>
+        <span class="hud-value" id="score-display">50</span>
+      </div>
+      <div class="hud-turns">
+        <span class="hud-icon">🥃</span>
+        <span class="hud-label">残り</span>
+        <span class="hud-value" id="turns-display">10</span>
+      </div>
+      <div class="hud-wallet">
+        <span class="hud-icon">💴</span>
+        <span class="hud-label">財布</span>
+        <span class="hud-value" id="wallet-display">¥15,000</span>
+      </div>
+    </div>
+
+    <!-- メッセージウィンドウ -->
+    <div class="message-area">
+      <div class="speaker-name" id="speaker-name">ユンちゃん</div>
+      <div class="message-text" id="message-text">
+        <span id="typing-text"></span>
+        <span class="cursor-blink">|</span>
+      </div>
+    </div>
+
+    <!-- ローディング -->
+    <div class="loading-dots" id="loading-dots">
+      <span></span><span></span><span></span>
+    </div>
+
+    <!-- アクションボタン -->
+    <div class="action-area" id="action-area">
+      <!-- 通常の選択肢 -->
+      <div id="normal-actions" class="action-group">
+        <div class="text-input-row">
+          <input type="text" id="player-input" placeholder="げんちゃんとして話す…" maxlength="100" autocomplete="off" />
+          <button id="send-btn" class="btn-send">送信</button>
+        </div>
+        <div class="quick-buttons">
+          <button class="btn-quick btn-drink" id="btn-yes-item" style="display:none;">🥂 奢る (¥-)</button>
+          <button class="btn-quick btn-refuse" id="btn-no-drink">🙅 断る</button>
+          <button class="btn-quick btn-bill" id="btn-bill">🧾 お会計！</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- エンディング画面 -->
+  <div id="ending-screen" class="screen">
+    <div class="ending-bg" id="ending-bg"></div>
+    <div class="ending-overlay"></div>
+    <div class="ending-content">
+      <div class="ending-badge" id="ending-badge">🎉</div>
+      <h2 class="ending-title" id="ending-title">アフター成功！</h2>
+      <div class="ending-stats">
+        <div class="stat-row">
+          <span>最終請求額</span>
+          <span id="final-bill">¥0</span>
+        </div>
+        <div class="stat-row">
+          <span>財布の残高</span>
+          <span id="final-wallet">¥15,000</span>
+        </div>
+        <div class="stat-row">
+          <span>好感度</span>
+          <span id="final-score">50</span>
+        </div>
+      </div>
+      <div class="ending-story" id="ending-story">ストーリーテキストがここに入ります。</div>
+      <button id="retry-btn" class="btn-retry">もう一度挑戦する</button>
+    </div>
+  </div>
+
+  <!-- シャンパンエフェクト -->
+  <div class="champagne-effect" id="champagne-effect">
+    <div class="champagne-text">🥂 シャンパン開栓！</div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

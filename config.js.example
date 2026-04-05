@@ -1,0 +1,8 @@
+// 💡 [使い方のヒント] このファイルを config.js にコピーして APIキーを貼り付けてください。
+const GAME_CONFIG = {
+  apiKey: "YOUR_API_KEY_HERE",
+  model: "gemini-3.1-flash-lite-preview",
+  budget: 15000, 
+  drinkPrice: 1500, 
+  bottlePrice: 8000, 
+};

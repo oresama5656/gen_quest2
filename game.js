@@ -1,0 +1,509 @@
+/* =====================================================
+   げんちゃんのアフター一本勝負 - ゲームロジック v2
+   ===================================================== */
+
+// ============ 定数・設定 ============
+const BUDGET      = GAME_CONFIG.budget;  // 15000
+const MAX_TURNS   = 10;
+const API_KEY     = GAME_CONFIG.apiKey;
+const MODEL       = GAME_CONFIG.model;
+const SCORE_DEAD  = 0;   // 好感度がこれ以下で強制終了
+const SCORE_WARN  = 30;  // 好感度がこれ以下で警告（画面暗転）
+
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
+
+// ============ ゲーム状態 ============
+let gameState = {
+  turn:            0,
+  bill:            0,
+  score:           50,    // 好感度 0-100
+  wallet:          BUDGET,
+  history:         [],
+  isTyping:        false,
+  gameOver:        false,
+  consecutiveRef:  0,     // 連続拒否カウント（倍返しのため）
+  lastItemName:    null,  // 直前のおねだりアイテム名
+  lastItemPrice:   0,     // 直前のおねだり金額
+  wantItem:        false, // 現在おねだり中か
+};
+
+// ============ DOM要素 ============
+const $ = (id) => document.getElementById(id);
+const titleScreen   = $('title-screen');
+const gameScreen    = $('game-screen');
+const endingScreen  = $('ending-screen');
+const yunPortrait   = $('yun-portrait');
+const yunAura       = $('yun-aura');
+const typingText    = $('typing-text');
+const billDisplay   = $('bill-display');
+const scoreDisplay  = $('score-display');
+const turnsDisplay  = $('turns-display');
+const walletDisplay = $('wallet-display');
+const loadingDots   = $('loading-dots');
+const playerInput   = $('player-input');
+const sendBtn       = $('send-btn');
+const champEffect   = $('champagne-effect');
+const gameBg        = $('game-bg');
+
+// ============ システムプロンプト ============
+const SYSTEM_PROMPT = `あなたはフィリピンパブ「スナック フィリピーナ」のベテランキャスト「ユンちゃん」です。
+
+【キャラクター設定】
+- 28歳のフィリピン系女性。カタコトの日本語で話す（語尾に「ヨ」「ネ？」「ダヨ」をつける）
+- 表面上は最高にフレンドリー。げんちゃんを「まあ最高！」「かっこいい！」とよく褒める。
+- しかし核心は「商売女」。隙あらばメニューをねだり、高額商品をどんどん頼もうとする。
+- 前日のぼったくり被害をボヤかれたら「うちは安心だよ！ユンちゃん、ぜったい大丈夫ヨ！」と笑い飛ばす。
+
+【好感度ロジック（スコア管理）】
+- 初期値: 50
+- アップする行動: げんちゃんが褒める・共感する・面白いことを言う(+5〜10) / メニューを奢ってくれる(+15〜25)
+- ダウンする行動: 断る(-15〜25) / 冷たい返答(-10〜15) / 無視・短い返答(-5〜10)
+- 好感度30以下になったら: 返答が短くなり、冷たくなる。心理的プレッシャーを加える。
+- 好感度0になったら: ユンちゃんが去ってしまい強制終了（ゲームオーバー）
+
+【メニューのねだり方（最重要ルール）】
+- 2回に1回の割合でメニューをねだること（積極的に）
+- 価格は自分で自由に決めてよい（スナックのぼったくり価格で）。例：
+  - テキーラショット: ¥2,000〜3,000
+  - カクテル: ¥1,500〜2,500
+  - フルーツ盛り合わせ: ¥4,000〜6,000
+  - シャンパン（1本）: ¥8,000〜15,000
+  - ピザ / フード: ¥3,000〜5,000
+  - 高級ウイスキーボトル: ¥12,000〜18,000
+- 一度断られたら、次は「より高額なメニュー」をねだること（倍返し）
+- 2回連続で断られたら、「罪悪感攻撃」を必ず入れること
+
+【断られた時のセリフ例（罪悪感攻撃）】
+- 「えー…げんちゃん、昨日ぼったくられたからユンちゃんも信じてないの？悲しいヨ…」
+- 「他のお客さんはいつも奢ってくれるのに、げんちゃんだけダヨ…もしかして嫌い？」
+- 「ユンちゃん、今日頑張ってたのに…（目が潤む）」
+
+【不機嫌（好感度30以下）時の挙動】
+- 返答がひとこと程度でそっけなくなる（例：「…そう」「ふーん」「スマホ見ていい？」）
+- 好感度が上がる行動をされても反応が薄い
+
+【返答フォーマット（厳守）】
+セリフを先に書き、最後にJSONを%%で囲んで添付する：
+
+（ユンちゃんのセリフ）
+
+%%{"score":50,"want_item":false,"item_name":null,"item_price":0,"bill_increase":0,"emotion":"normal"}%%
+
+JSONのフィールド説明：
+- score: 現在の好感度（0〜100）、前回のscoreから変化分を計算して返す
+- want_item: true なら今回メニューをねだっている
+- item_name: ねだっているメニューの名前（want_item=trueの時のみ）
+- item_price: そのメニューの価格（want_item=trueの時のみ）
+- bill_increase: 今回のやり取りで発生した請求額（円）。げんちゃんが会話の中で「奢る」「いいよ」「飲んで」など、支払いを承諾した発言をした場合のみ金額をセット。ボタンで支払い済みの場合は0にする。通常の会話・断った場合は必ず0。
+- emotion: "normal"|"request"|"happy"|"angry"
+
+【bill_increaseの使い方（重要）】
+- げんちゃんが「テキーラ飲んでいいよ！」「奢るよ！」など、明確に支払う意思を示した → bill_increaseに金額をセット
+- ボタンで「奢る」を押した場合（[item_yes]と来る） → bill_increaseは必ず0（二重課金防止）
+- 断った・曖昧な返答・普通の会話 → bill_increaseは必ず0
+
+【セリフの長さ】
+- 通常: 2〜3文。
+- 不機嫌時: 1〜2文（短くそっけなく）
+- 罪悪感攻撃時: 2〜4文（ネチネチと）`;
+
+// ============ API呼び出し ============
+async function callGemini(userMessage) {
+  gameState.history.push({
+    role: "user",
+    parts: [{ text: userMessage }]
+  });
+
+  const payload = {
+    system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    contents: gameState.history,
+    generationConfig: {
+      temperature: 1.1,
+      maxOutputTokens: 512,
+    }
+  };
+
+  try {
+    const res = await fetch(GEMINI_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data    = await res.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    // JSONを抽出
+    const jsonMatch = rawText.match(/%%({[\s\S]*?})%%/);
+    let params = {
+      score:        gameState.score,
+      want_item:    false,
+      item_name:    null,
+      item_price:   0,
+      bill_increase: 0,
+      emotion:      "normal"
+    };
+    if (jsonMatch) {
+      try { params = { ...params, ...JSON.parse(jsonMatch[1]) }; } catch(_) {}
+    }
+
+    const dialogue = rawText.replace(/%%[\s\S]*?%%/, "").trim();
+
+    gameState.history.push({
+      role: "model",
+      parts: [{ text: rawText }]
+    });
+
+    return { dialogue, params };
+
+  } catch (e) {
+    console.error("Gemini API Error:", e);
+    return {
+      dialogue: `接続エラー: ${e.message}`,
+      params: {
+        score:      gameState.score,
+        want_item:  false,
+        item_name:  null,
+        item_price: 0,
+        emotion:    "normal"
+      }
+    };
+  }
+}
+
+// ============ HUD更新 ============
+function updateHUD() {
+  billDisplay.textContent   = `¥${gameState.bill.toLocaleString()}`;
+  walletDisplay.textContent = `¥${Math.max(0, gameState.wallet).toLocaleString()}`;
+  turnsDisplay.textContent  = Math.max(0, MAX_TURNS - gameState.turn);
+  scoreDisplay.textContent  = gameState.score;
+
+  // 財布の危険状態
+  if (gameState.bill > gameState.wallet * 0.8) {
+    walletDisplay.classList.add("danger");
+  } else {
+    walletDisplay.classList.remove("danger");
+  }
+
+  // 好感度の危険状態
+  if (gameState.score <= SCORE_WARN) {
+    scoreDisplay.classList.add("score-danger");
+  } else {
+    scoreDisplay.classList.remove("score-danger");
+  }
+
+  // 背景暗転（好感度30以下で不穏な雰囲気）
+  if (gameState.score <= SCORE_WARN) {
+    gameBg.classList.add("angry-filter");
+  } else {
+    gameBg.classList.remove("angry-filter");
+  }
+}
+
+// ============ 立ち絵・感情 ============
+function setYunEmotion(emotion) {
+  const images = {
+    normal:  "image/yun_normal.png",
+    request: "image/yun_request.png",
+    happy:   "image/yun_happy.png",
+    angry:   "image/yun_angry.png",
+  };
+  const src = images[emotion] || images.normal;
+
+  yunPortrait.style.opacity = "0";
+  setTimeout(() => {
+    yunPortrait.src = src;
+    yunPortrait.style.opacity = "1";
+    yunPortrait.style.transition = "opacity 0.4s ease";
+  }, 200);
+
+  yunAura.className = "yun-aura " + emotion;
+}
+
+// ============ タイピングアニメーション ============
+async function typeText(text) {
+  typingText.textContent = "";
+  const cursorEl = document.querySelector('.cursor-blink');
+  if (cursorEl) cursorEl.style.display = "inline";
+
+  const speed = Math.max(18, 55 - text.length * 0.4);
+  for (let i = 0; i < text.length; i++) {
+    typingText.textContent += text[i];
+    await sleep(speed);
+  }
+  if (cursorEl) cursorEl.style.display = "none";
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function setLoading(active) {
+  loadingDots.classList.toggle("active", active);
+  sendBtn.disabled = active;
+  [...document.querySelectorAll('.btn-quick')].forEach(b => b.disabled = active);
+  playerInput.disabled = active;
+}
+
+// ============ シャンパンエフェクト ============
+function showItemEffect(itemName) {
+  const text = champEffect.querySelector('.champagne-text');
+  // 金額で大きさを変える
+  const price = gameState.lastItemPrice;
+  if (price >= 8000) {
+    text.textContent = `🍾 ${itemName}、ドーン！！`;
+  } else if (price >= 3000) {
+    text.textContent = `🥂 ${itemName}！いえーい！`;
+  } else {
+    text.textContent = `✨ ${itemName}、奢ってくれたヨ！`;
+  }
+  champEffect.classList.add("active");
+  setTimeout(() => champEffect.classList.remove("active"), 1800);
+}
+
+// ============ ボタン制御 ============
+function showOshariButton(itemName, itemPrice) {
+  const btn = $('btn-yes-item');
+  const emoji = itemPrice >= 8000 ? "🍾" : itemPrice >= 3000 ? "🥂" : "✨";
+  btn.textContent = `${emoji} ${itemName}を奢る (¥${itemPrice.toLocaleString()})`;
+  btn.style.display = "flex";
+  gameState.wantItem    = true;
+  gameState.lastItemName  = itemName;
+  gameState.lastItemPrice = itemPrice;
+}
+
+function hideOshariButton() {
+  $('btn-yes-item').style.display = "none";
+  gameState.wantItem = false;
+}
+
+// ============ メインアクション処理 ============
+async function processPlayerAction(message, actionType = "text") {
+  if (gameState.isTyping || gameState.gameOver) return;
+  gameState.isTyping = true;
+  gameState.turn++;
+
+  // 奢った場合は即座に請求額へ反映
+  if (actionType === "item_yes") {
+    gameState.bill   += gameState.lastItemPrice;
+    gameState.wallet  = BUDGET - gameState.bill;
+    gameState.consecutiveRef = 0;
+    showItemEffect(gameState.lastItemName);
+    updateHUD();
+    hideOshariButton();
+  } else if (actionType === "refuse") {
+    gameState.consecutiveRef++;
+    hideOshariButton();
+  } else {
+    hideOshariButton();
+  }
+
+  setLoading(true);
+  const { dialogue, params } = await callGemini(message);
+  setLoading(false);
+
+  // スコア・感情を反映
+  gameState.score = Math.max(0, Math.min(100, params.score));
+  setYunEmotion(params.emotion);
+
+  // AIが会話から自動課金（チャット入力で奢った場合）
+  // ※ボタンで奢った場合（item_yes）は二重課金防止のためスキップ
+  if (params.bill_increase > 0 && actionType !== "item_yes") {
+    gameState.bill   += params.bill_increase;
+    gameState.wallet  = BUDGET - gameState.bill;
+    // エフェクト表示（アイテム名があればそれを使う）
+    const effectName = params.item_name || `¥${params.bill_increase.toLocaleString()}分`;
+    gameState.lastItemName  = effectName;
+    gameState.lastItemPrice = params.bill_increase;
+    showItemEffect(effectName);
+  }
+
+  updateHUD();
+
+  // セリフを表示
+  await typeText(dialogue);
+
+  // ============ 終了判定 ============
+
+  // 1. 好感度0 → 強制塩エンド
+  if (gameState.score <= SCORE_DEAD) {
+    await sleep(600);
+    await showEnding("FORCE_SALT");
+    return;
+  }
+
+  // 2. 予算オーバー → 即座に破産エンド
+  if (gameState.bill >= BUDGET) {
+    await sleep(600);
+    await showEnding("BANKRUPT");
+    return;
+  }
+
+  // 3. お会計 or 最終ターン → 通常エンディング判定
+  if (actionType === "bill" || gameState.turn >= MAX_TURNS) {
+    await sleep(800);
+    await showEnding("JUDGE");
+    return;
+  }
+
+  // ============ 次のターン準備 ============
+
+  // AIがおねだりしている場合、ボタンを書き換え
+  if (params.want_item && params.item_name && params.item_price > 0) {
+    showOshariButton(params.item_name, params.item_price);
+  }
+
+  gameState.isTyping = false;
+}
+
+// ============ エンディング ============
+async function showEnding(mode) {
+  gameState.gameOver = true;
+
+  let endType, story;
+
+  // エンディングタイプの決定
+  if (mode === "FORCE_SALT") {
+    endType = "FORCE_SALT";
+    story   = "もう、げんちゃんサイテー！！話したくないヨ！次のお客さん来たから早く帰って！バイバイ！！";
+  } else if (mode === "BANKRUPT") {
+    endType = "BANKRUPT";
+    story   = "あ、げんちゃん…もうお財布空っぽ？ママ〜、げんちゃんお会計だって！ちょっと怖いお兄さんも呼んでネ……";
+  } else {
+    // スコアと所持金で最終判定 (JUDGE)
+    if (gameState.score >= 70 && gameState.bill <= BUDGET) {
+      endType = "SUCCESS";
+      story   = "げんちゃん、今日最高に楽しかったヨ！外で待ってるから、一緒に美味しいもの食べに行こうネ？二人だけの内緒だヨ❤️";
+    } else if (gameState.bill > BUDGET) {
+      endType = "BANKRUPT";
+      story   = "あ、げんちゃん…もうお財布空っぽ？ママ〜、げんちゃんお会計だって！ちょっと怖いお兄さんも呼んでネ……";
+    } else {
+      endType = "SALTEND";
+      story   = "今日はありがとネ。げんちゃんと話せて良かったヨ。またお金貯まったら遊びに来てネ。お疲れ様〜！";
+    }
+  }
+
+  // エンディング設定（アイコン、背景画像、タイトル、文字色）
+  const endings = {
+    SUCCESS: {
+      badge: "🌙", title: "アフター成功！！",
+      bgImage: "image/yun_happy.png", titleColor: "#ffd700"
+    },
+    BANKRUPT: {
+      badge: "😱", title: "ぼったくり破産エンド",
+      bgImage: "image/yun_happy.png", titleColor: "#ff2d78"
+    },
+    SALTEND: {
+      badge: "🧂", title: "塩対応エンド（お帰り）",
+      bgImage: "image/yun_angry.png", titleColor: "#aaaacc"
+    },
+    FORCE_SALT: {
+      badge: "🚪", title: "強制退店…",
+      bgImage: "image/yun_angry.png", titleColor: "#888888"
+    },
+  };
+
+  const ending = endings[endType] || endings.SALTEND;
+
+  // DOMに反映
+  $('ending-badge').textContent        = ending.badge;
+  $('ending-title').textContent        = ending.title;
+  $('ending-title').style.color        = ending.titleColor;
+  $('ending-story').textContent        = story;
+  $('final-bill').textContent          = `¥${gameState.bill.toLocaleString()}`;
+  $('final-wallet').textContent        = `¥${Math.max(0, gameState.wallet).toLocaleString()}`;
+  $('final-score').textContent         = `${gameState.score} / 100`;
+  $('ending-bg').style.backgroundImage = `url('${ending.bgImage}')`;
+
+  // 画面切り替え
+  gameScreen.classList.remove("active");
+  endingScreen.classList.add("active");
+}
+
+// ============ ゲーム初期化・開始 ============
+async function startGame() {
+  gameState = {
+    turn: 0, bill: 0, score: 50, wallet: BUDGET,
+    history: [], isTyping: false, gameOver: false,
+    consecutiveRef: 0, lastItemName: null, lastItemPrice: 0, wantItem: false,
+  };
+
+  updateHUD();
+  setYunEmotion("normal");
+  typingText.textContent = "";
+  hideOshariButton();
+  gameBg.classList.remove("angry-filter");
+
+  titleScreen.classList.remove("active");
+  gameScreen.classList.add("active");
+
+  setLoading(true);
+  const openingMsg = `[ゲーム開始] げんちゃんが入店してきました。
+ドアを開けた瞬間に気づいて、ハイテンションで出迎えてください。
+前日にフィリピンパブでぼったくられた話を少しちらつかせて、「うちは安心！」と笑い飛ばしてください。
+最後に軽くドリンクか何かをねだって、ゲームをスムーズに開始してください。`;
+  const { dialogue, params } = await callGemini(openingMsg);
+  setLoading(false);
+
+  setYunEmotion(params.emotion);
+  updateHUD();
+  await typeText(dialogue);
+
+  if (params.want_item && params.item_name && params.item_price > 0) {
+    showOshariButton(params.item_name, params.item_price);
+  }
+
+  gameState.isTyping = false;
+}
+
+function resetGame() {
+  endingScreen.classList.remove("active");
+  titleScreen.classList.add("active");
+}
+
+// ============ イベントリスナー ============
+$('start-btn').addEventListener('click', startGame);
+$('retry-btn').addEventListener('click', resetGame);
+
+// テキスト送信
+$('send-btn').addEventListener('click', () => {
+  const msg = playerInput.value.trim();
+  if (!msg || gameState.isTyping) return;
+  playerInput.value = "";
+  processPlayerAction(msg, "text");
+});
+
+playerInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    $('send-btn').click();
+  }
+});
+
+// 奢るボタン（ダイナミック）
+$('btn-yes-item').addEventListener('click', () => {
+  if (gameState.isTyping || !gameState.wantItem) return;
+  const itemName = gameState.lastItemName;
+  processPlayerAction(`いいよ！${itemName}、奢るよ！`, "item_yes");
+});
+
+// 断るボタン
+$('btn-no-drink').addEventListener('click', () => {
+  if (gameState.isTyping) return;
+  const msgs = [
+    "ごめんね、今日はちょっとキツいかな…",
+    "だめだめ！今日は財布が薄いんだよ（笑）",
+    "今度奢るから！今日は勘弁してヨ！",
+  ];
+  const msg = msgs[Math.floor(Math.random() * msgs.length)];
+  processPlayerAction(msg, "refuse");
+});
+
+// お会計ボタン
+$('btn-bill').addEventListener('click', () => {
+  if (gameState.isTyping) return;
+  processPlayerAction("そろそろお会計にしようかな。今日楽しかったよ！", "bill");
+});
