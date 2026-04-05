@@ -126,9 +126,9 @@ JSONのフィールド説明：
 - 断った・曖昧な返答・普通の会話 → bill_increaseは必ず0
 
 【セリフの長さ】
-- 通常: 2〜3文。
-- 不機嫌時: 1〜2文（短くそっけなく）
-- 罪悪感攻撃時: 2〜4文（ネチネチと）`;
+- 通常時: **必ず1文、最大2文まで。100文字以内で終わること（厳守）**
+- 不機嫌時: 1文のみ（1屑程度）
+- 罪悪感攻撃時: 最大2文まで（ネチネチと）`;
 
 // ============ API呼び出し ============
 async function callGemini(userMessage) {
@@ -142,7 +142,7 @@ async function callGemini(userMessage) {
     contents: gameState.history,
     generationConfig: {
       temperature: 1.1,
-      maxOutputTokens: 512,
+      maxOutputTokens: 256,
     }
   };
 

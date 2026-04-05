@@ -31,66 +31,72 @@
 
   <!-- メインゲーム画面 -->
   <div id="game-screen" class="screen">
-    <!-- 背景 -->
-    <div class="game-bg" id="game-bg"></div>
-    <div class="game-bg-overlay"></div>
 
-    <!-- ユンちゃん立ち絵 -->
-    <div class="character-area">
-      <img id="yun-portrait" src="image/yun_normal.png" alt="ユンちゃん" class="yun-portrait" />
-      <div class="yun-aura" id="yun-aura"></div>
-    </div>
+    <!-- ▲ 上ゾーン：キャラ＋背景＋HUD -->
+    <div class="game-top">
+      <div class="game-bg" id="game-bg"></div>
+      <div class="game-bg-overlay"></div>
 
-    <!-- HUD（ステータス表示） -->
-    <div class="hud">
-      <div class="hud-bill">
-        <span class="hud-icon">💳</span>
-        <span class="hud-label">請求額</span>
-        <span class="hud-value" id="bill-display">¥0</span>
-      </div>
-      <div class="hud-score">
-        <span class="hud-icon">❤️</span>
-        <span class="hud-label">好感度</span>
-        <span class="hud-value" id="score-display">50</span>
-      </div>
-      <div class="hud-turns">
-        <span class="hud-icon">🥃</span>
-        <span class="hud-label">残り</span>
-        <span class="hud-value" id="turns-display">10</span>
-      </div>
-      <div class="hud-wallet">
-        <span class="hud-icon">💴</span>
-        <span class="hud-label">財布</span>
-        <span class="hud-value" id="wallet-display">¥15,000</span>
-      </div>
-    </div>
-
-    <!-- メッセージウィンドウ -->
-    <div class="message-area">
-      <div class="speaker-name" id="speaker-name">ユンちゃん</div>
-      <div class="message-text" id="message-text">
-        <span id="typing-text"></span>
-        <span class="cursor-blink">|</span>
-      </div>
-    </div>
-
-    <!-- ローディング -->
-    <div class="loading-dots" id="loading-dots">
-      <span></span><span></span><span></span>
-    </div>
-
-    <!-- アクションボタン -->
-    <div class="action-area" id="action-area">
-      <!-- 通常の選択肢 -->
-      <div id="normal-actions" class="action-group">
-        <div class="text-input-row">
-          <input type="text" id="player-input" placeholder="げんちゃんとして話す…" maxlength="100" autocomplete="off" />
-          <button id="send-btn" class="btn-send">送信</button>
+      <!-- HUD（ステータス表示） -->
+      <div class="hud">
+        <div class="hud-bill">
+          <span class="hud-icon">💳</span>
+          <span class="hud-label">請求額</span>
+          <span class="hud-value" id="bill-display">¥0</span>
         </div>
-        <div class="quick-buttons">
-          <button class="btn-quick btn-drink" id="btn-yes-item" style="display:none;">🥂 奢る (¥-)</button>
-          <button class="btn-quick btn-refuse" id="btn-no-drink">🙅 断る</button>
-          <button class="btn-quick btn-bill" id="btn-bill">🧾 お会計！</button>
+        <div class="hud-score">
+          <span class="hud-icon">❤️</span>
+          <span class="hud-label">好感度</span>
+          <span class="hud-value" id="score-display">50</span>
+        </div>
+        <div class="hud-turns">
+          <span class="hud-icon">🥃</span>
+          <span class="hud-label">残り</span>
+          <span class="hud-value" id="turns-display">10</span>
+        </div>
+        <div class="hud-wallet">
+          <span class="hud-icon">💴</span>
+          <span class="hud-label">財布</span>
+          <span class="hud-value" id="wallet-display">¥15,000</span>
+        </div>
+      </div>
+
+      <!-- ユンちゃん立ち絵 -->
+      <div class="character-area">
+        <img id="yun-portrait" src="image/yun_normal.png" alt="ユンちゃん" class="yun-portrait" />
+        <div class="yun-aura" id="yun-aura"></div>
+      </div>
+    </div>
+
+    <!-- ▼ 下ゾーン：メッセージ＋入力 -->
+    <div class="game-bottom">
+
+      <!-- ローディング -->
+      <div class="loading-dots" id="loading-dots">
+        <span></span><span></span><span></span>
+      </div>
+
+      <!-- メッセージウィンドウ -->
+      <div class="message-area">
+        <div class="speaker-name" id="speaker-name">ユンちゃん</div>
+        <div class="message-text" id="message-text">
+          <span id="typing-text"></span>
+          <span class="cursor-blink">|</span>
+        </div>
+      </div>
+
+      <!-- アクションボタン -->
+      <div class="action-area" id="action-area">
+        <div id="normal-actions" class="action-group">
+          <div class="text-input-row">
+            <input type="text" id="player-input" placeholder="げんちゃんとして話す…" maxlength="100" autocomplete="off" />
+            <button id="send-btn" class="btn-send">送信</button>
+          </div>
+          <div class="quick-buttons">
+            <button class="btn-quick btn-drink" id="btn-yes-item" style="display:none;">🥂 奢る (¥-)</button>
+            <button class="btn-quick btn-refuse" id="btn-no-drink">🙅 断る</button>
+            <button class="btn-quick btn-bill" id="btn-bill">🧾 お会計！</button>
+          </div>
         </div>
       </div>
     </div>

@@ -177,6 +177,16 @@ html, body {
 #game-screen {
   position: fixed;
   inset: 0;
+  flex-direction: column;
+}
+
+/* ▲ 上ゾーン：キャラ＋背景＋HUD */
+.game-top {
+  position: relative;
+  width: 100%;
+  height: 45vh;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 /* 背景 */
@@ -193,31 +203,30 @@ html, body {
     180deg,
     rgba(0,0,0,0.1) 0%,
     rgba(0,0,0,0.0) 30%,
-    rgba(0,0,0,0.6) 70%,
-    rgba(0,0,0,0.92) 100%
+    rgba(0,0,0,0.5) 100%
   );
 }
 
 /* キャラクター */
 .character-area {
   position: absolute;
-  bottom: 220px;
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: min(65vw, 380px);
-  z-index: 2;
+  width: min(55vw, 300px);
+  height: calc(45vh - 56px); /* HUDの高さ分を引く */
   display: flex;
   justify-content: center;
   align-items: flex-end;
+  z-index: 2;
 }
 
 .yun-portrait {
   width: 100%;
-  height: auto;
+  height: 100%;
   object-fit: contain;
   object-position: top;
-  max-height: 65vh;
-  filter: drop-shadow(0 10px 30px rgba(180,0,255,0.5));
+  filter: drop-shadow(0 6px 20px rgba(180,0,255,0.5));
   transition: all 0.6s ease;
   animation: float-char 4s ease-in-out infinite;
 }
@@ -225,6 +234,7 @@ html, body {
   0%, 100% { transform: translateY(0); }
   50%       { transform: translateY(-6px); }
 }
+
 
 .yun-aura {
   position: absolute;
@@ -260,9 +270,9 @@ html, body {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
-  padding: 0.6rem 1rem 1.2rem;
-  gap: 0.5rem;
+  background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%);
+  padding: 0.5rem 0.5rem 0.8rem;
+  gap: 0.3rem;
 }
 .hud > div {
   display: flex;
@@ -300,23 +310,23 @@ html, body {
   transition: filter 1.5s ease !important;
 }
 
+/* ▼ 下ゾーン：メッセージ＋入力 */
+.game-bottom {
+  width: 100%;
+  height: 55vh;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(10,0,20,0.92) 0%, rgba(5,0,10,0.98) 100%);
+  position: relative;
+}
+
 /* メッセージウィンドウ */
 .message-area {
-  position: absolute;
-  bottom: 220px;
-  left: 1rem;
-  right: 1rem;
-  z-index: 10;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  padding: 1rem 1.2rem;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow:
-    0 0 20px rgba(176,38,255,0.2),
-    inset 0 1px 0 rgba(255,255,255,0.08);
-  min-height: 80px;
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.8rem 1rem 0.5rem;
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .speaker-name {
@@ -348,7 +358,7 @@ html, body {
 /* ローディング */
 .loading-dots {
   position: absolute;
-  bottom: 300px;
+  top: 0.5rem;
   left: 50%;
   transform: translateX(-50%);
   z-index: 11;
@@ -374,16 +384,14 @@ html, body {
 
 /* アクションエリア */
 .action-area {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  width: 100%;
+  flex-shrink: 0;
   z-index: 10;
-  padding: 0.75rem;
-  background: linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 100%);
+  padding: 0.6rem 0.75rem;
+  background: rgba(5,0,12,0.98);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .action-group {
