@@ -337,10 +337,10 @@ async function processPlayerAction(message, actionType = "text") {
   if (params.bill_increase > 0 && actionType !== "item_yes") {
     gameState.bill   += params.bill_increase;
     gameState.wallet  = BUDGET - gameState.bill;
-    // エフェクト表示（アイテム名があればそれを使う）
-    const effectName = params.item_name || `¥${params.bill_increase.toLocaleString()}分`;
-    gameState.lastItemName  = effectName;
-    gameState.lastItemPrice = params.bill_increase;
+    // エフェクト表示（「今ねだっていた商品」を優先。item_nameは次のおねだりが混入するため使わない）
+    const effectName = gameState.lastItemName || `¥${params.bill_increase.toLocaleString()}分`;
+    const effectPrice = gameState.lastItemPrice || params.bill_increase;
+    gameState.lastItemPrice = effectPrice;
     showItemEffect(effectName);
   }
 
@@ -441,6 +441,27 @@ async function showEnding(mode) {
   $('final-score').textContent         = `${gameState.score} / 100`;
   $('ending-bg').style.backgroundImage = `url('${ending.bgImage}')`;
 
+  // 🎬 アフター成功時のみ動画背景を再生、それ以外は非表示にする
+  const endingVideo = document.getElementById('ending-video');
+  if (endType === 'SUCCESS') {
+    // 動画を表示して再生
+    endingVideo.style.display = 'block';
+    endingVideo.currentTime = 0;
+    endingVideo.play().catch(() => {}); // 自動再生ブロックの対策
+    // 成功エンドは背景画像を非表示
+    $('ending-bg').style.display = 'none';
+    $('ending-overlay').style.background = 'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,30,0.6) 100%)';
+    // 🎵 BGMも再生（コメント解除するだけで機能）
+    // const bgm = document.getElementById('ending-bgm');
+    // if (bgm) { bgm.currentTime = 0; bgm.play().catch(() => {}); }
+  } else {
+    // 動画を止めて非表示
+    endingVideo.pause();
+    endingVideo.style.display = 'none';
+    $('ending-bg').style.display = '';
+    $('ending-overlay').style.background = '';
+  }
+
   // 画面切り替え
   gameScreen.classList.remove("active");
   endingScreen.classList.add("active");
@@ -448,6 +469,15 @@ async function showEnding(mode) {
 
 // ============ ゲーム初期化・開始 ============
 async function startGame() {
+  // 🎬 リトライ時に動画・オーディオをリセット
+  const endingVideo = document.getElementById('ending-video');
+  endingVideo.pause();
+  endingVideo.style.display = 'none';
+  $('ending-bg').style.display = '';
+  $('ending-overlay').style.background = '';
+  // const bgm = document.getElementById('ending-bgm');
+  // if (bgm) { bgm.pause(); bgm.currentTime = 0; }
+
   gameState = {
     turn: 0, bill: 0, score: 50, wallet: BUDGET,
     history: [], isTyping: false, gameOver: false,

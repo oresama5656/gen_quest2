@@ -104,6 +104,14 @@
 
   <!-- エンディング画面 -->
   <div id="ending-screen" class="screen">
+    <!-- 🎬 アフター成功専用：動画背景（SUCCESS時のみ表示） -->
+    <video id="ending-video" src="image/ending.mp4" muted loop playsinline
+      style="display:none; position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;"
+    ></video>
+
+    <!-- 🎵 BGM（後付け用プレースホルダー：srcに音楽ファイルを指定するだけで完成） -->
+    <!-- <audio id="ending-bgm" src="image/bgm_success.mp3" loop></audio> -->
+
     <div class="ending-bg" id="ending-bg"></div>
     <div class="ending-overlay"></div>
     <div class="ending-content">
