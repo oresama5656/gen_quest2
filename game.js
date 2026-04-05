@@ -441,6 +441,10 @@ async function showEnding(mode) {
   $('final-score').textContent         = `${gameState.score} / 999`;
   $('ending-bg').style.backgroundImage = `url('${ending.bgImage}')`;
 
+  // 🎵 メインBGMを停止
+  const bgmMain = document.getElementById('bgm-main');
+  if (bgmMain) bgmMain.pause();
+
   // 🎬 アフター成功時のみ動画背景を再生、それ以外は非表示にする
   const endingVideo = document.getElementById('ending-video');
   if (endType === 'SUCCESS') {
@@ -469,6 +473,10 @@ async function showEnding(mode) {
     $('ending-bg').style.display = '';
     endingScreen.classList.remove('cinematic');
     document.querySelector('.ending-content').classList.remove('show');
+    
+    // 🎵 バッドエンド用BGMを再生
+    const bgmBadend = document.getElementById('bgm-badend');
+    if (bgmBadend) { bgmBadend.currentTime = 0; bgmBadend.play().catch(e => console.log("Audio play blocked", e)); }
   }
 
   // 画面切り替え
@@ -489,6 +497,15 @@ async function startGame() {
   document.querySelector('.ending-content').classList.remove('show');
   const bgm = document.getElementById('ending-bgm');
   if (bgm) { bgm.pause(); bgm.currentTime = 0; }
+  
+  const bgmBadend = document.getElementById('bgm-badend');
+  if (bgmBadend) { bgmBadend.pause(); bgmBadend.currentTime = 0; }
+  
+  const bgmTitle = document.getElementById('bgm-title');
+  if (bgmTitle) bgmTitle.pause();
+
+  const bgmMain = document.getElementById('bgm-main');
+  if (bgmMain) { bgmMain.currentTime = 0; bgmMain.play().catch(e => console.log("Audio play blocked", e)); }
 
   gameState = {
     turn: 0, bill: 0, score: 50, wallet: BUDGET,
@@ -531,6 +548,14 @@ function resetGame() {
 
 // ============ イベントリスナー ============
 $('start-btn').addEventListener('click', startGame);
+
+// タイトル画面のBGM（ユーザーが画面のどこかをクリックしたら再生）
+document.addEventListener('click', () => {
+  const bgmTitle = document.getElementById('bgm-title');
+  if (titleScreen.classList.contains('active') && bgmTitle && bgmTitle.paused) {
+    bgmTitle.play().catch(() => {});
+  }
+}, { once: true });
 $('retry-btn').addEventListener('click', resetGame);
 
 // テキスト送信
