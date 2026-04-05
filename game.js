@@ -3,47 +3,47 @@
    ===================================================== */
 
 // ============ 定数・設定 ============
-const BUDGET      = GAME_CONFIG.budget;  // 15000
-const MAX_TURNS   = 3; // ⚠️テスト版（本番は10にする）
-const API_KEY     = GAME_CONFIG.apiKey;
-const MODEL       = GAME_CONFIG.model;
-const SCORE_DEAD  = 0;   // 好感度がこれ以下で強制終了
-const SCORE_WARN  = 30;  // 好感度がこれ以下で警告（画面暗転）
+const BUDGET = GAME_CONFIG.budget;  // 15000
+const MAX_TURNS = 10; // ⚠️テスト版（本番は10にする）
+const API_KEY = GAME_CONFIG.apiKey;
+const MODEL = GAME_CONFIG.model;
+const SCORE_DEAD = 0;   // 好感度がこれ以下で強制終了
+const SCORE_WARN = 30;  // 好感度がこれ以下で警告（画面暗転）
 
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 
 // ============ ゲーム状態 ============
 let gameState = {
-  turn:            0,
-  bill:            0,
-  score:           50,    // 好感度 0-100
-  wallet:          BUDGET,
-  history:         [],
-  isTyping:        false,
-  gameOver:        false,
-  consecutiveRef:  0,     // 連続拒否カウント（倍返しのため）
-  lastItemName:    null,  // 直前のおねだりアイテム名
-  lastItemPrice:   0,     // 直前のおねだり金額
-  wantItem:        false, // 現在おねだり中か
+  turn: 0,
+  bill: 0,
+  score: 50,    // 好感度 0-100
+  wallet: BUDGET,
+  history: [],
+  isTyping: false,
+  gameOver: false,
+  consecutiveRef: 0,     // 連続拒否カウント（倍返しのため）
+  lastItemName: null,  // 直前のおねだりアイテム名
+  lastItemPrice: 0,     // 直前のおねだり金額
+  wantItem: false, // 現在おねだり中か
 };
 
 // ============ DOM要素 ============
 const $ = (id) => document.getElementById(id);
-const titleScreen   = $('title-screen');
-const gameScreen    = $('game-screen');
-const endingScreen  = $('ending-screen');
-const yunPortrait   = $('yun-portrait');
-const yunAura       = $('yun-aura');
-const typingText    = $('typing-text');
-const billDisplay   = $('bill-display');
-const scoreDisplay  = $('score-display');
-const turnsDisplay  = $('turns-display');
+const titleScreen = $('title-screen');
+const gameScreen = $('game-screen');
+const endingScreen = $('ending-screen');
+const yunPortrait = $('yun-portrait');
+const yunAura = $('yun-aura');
+const typingText = $('typing-text');
+const billDisplay = $('bill-display');
+const scoreDisplay = $('score-display');
+const turnsDisplay = $('turns-display');
 const walletDisplay = $('wallet-display');
-const loadingDots   = $('loading-dots');
-const playerInput   = $('player-input');
-const sendBtn       = $('send-btn');
-const champEffect   = $('champagne-effect');
-const gameBg        = $('game-bg');
+const loadingDots = $('loading-dots');
+const playerInput = $('player-input');
+const sendBtn = $('send-btn');
+const champEffect = $('champagne-effect');
+const gameBg = $('game-bg');
 
 // ============ システムプロンプト ============
 const SYSTEM_PROMPT = `あなたはフィリピンパブ「スナック フィリピーナ」のベテランキャスト「ユンちゃん」です。
@@ -158,21 +158,21 @@ async function callGemini(userMessage) {
       throw new Error(errData.error?.message || `HTTP ${res.status}`);
     }
 
-    const data    = await res.json();
+    const data = await res.json();
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     // JSONを抽出
     const jsonMatch = rawText.match(/%%({[\s\S]*?})%%/);
     let params = {
-      score:        gameState.score,
-      want_item:    false,
-      item_name:    null,
-      item_price:   0,
+      score: gameState.score,
+      want_item: false,
+      item_name: null,
+      item_price: 0,
       bill_increase: 0,
-      emotion:      "normal"
+      emotion: "normal"
     };
     if (jsonMatch) {
-      try { params = { ...params, ...JSON.parse(jsonMatch[1]) }; } catch(_) {}
+      try { params = { ...params, ...JSON.parse(jsonMatch[1]) }; } catch (_) { }
     }
 
     const dialogue = rawText.replace(/%%[\s\S]*?%%/, "").trim();
@@ -189,11 +189,11 @@ async function callGemini(userMessage) {
     return {
       dialogue: `接続エラー: ${e.message}`,
       params: {
-        score:      gameState.score,
-        want_item:  false,
-        item_name:  null,
+        score: gameState.score,
+        want_item: false,
+        item_name: null,
         item_price: 0,
-        emotion:    "normal"
+        emotion: "normal"
       }
     };
   }
@@ -201,10 +201,10 @@ async function callGemini(userMessage) {
 
 // ============ HUD更新 ============
 function updateHUD() {
-  billDisplay.textContent   = `¥${gameState.bill.toLocaleString()}`;
+  billDisplay.textContent = `¥${gameState.bill.toLocaleString()}`;
   walletDisplay.textContent = `¥${Math.max(0, gameState.wallet).toLocaleString()}`;
-  turnsDisplay.textContent  = Math.max(0, MAX_TURNS - gameState.turn);
-  scoreDisplay.textContent  = gameState.score;
+  turnsDisplay.textContent = Math.max(0, MAX_TURNS - gameState.turn);
+  scoreDisplay.textContent = gameState.score;
 
   // 財布の危険状態
   if (gameState.bill > gameState.wallet * 0.8) {
@@ -231,10 +231,10 @@ function updateHUD() {
 // ============ 立ち絵・感情 ============
 function setYunEmotion(emotion) {
   const images = {
-    normal:  "image/yun_normal.png",
+    normal: "image/yun_normal.png",
     request: "image/yun_request.png",
-    happy:   "image/yun_happy.png",
-    angry:   "image/yun_angry.png",
+    happy: "image/yun_happy.png",
+    angry: "image/yun_angry.png",
   };
   const src = images[emotion] || images.normal;
 
@@ -293,8 +293,8 @@ function showOshariButton(itemName, itemPrice) {
   const emoji = itemPrice >= 8000 ? "🍾" : itemPrice >= 3000 ? "🥂" : "✨";
   btn.textContent = `${emoji} ${itemName}を奢る (¥${itemPrice.toLocaleString()})`;
   btn.style.display = "flex";
-  gameState.wantItem    = true;
-  gameState.lastItemName  = itemName;
+  gameState.wantItem = true;
+  gameState.lastItemName = itemName;
   gameState.lastItemPrice = itemPrice;
 }
 
@@ -311,8 +311,8 @@ async function processPlayerAction(message, actionType = "text") {
 
   // 奢った場合は即座に請求額へ反映
   if (actionType === "item_yes") {
-    gameState.bill   += gameState.lastItemPrice;
-    gameState.wallet  = BUDGET - gameState.bill;
+    gameState.bill += gameState.lastItemPrice;
+    gameState.wallet = BUDGET - gameState.bill;
     gameState.consecutiveRef = 0;
     showItemEffect(gameState.lastItemName);
     updateHUD();
@@ -335,8 +335,8 @@ async function processPlayerAction(message, actionType = "text") {
   // AIが会話から自動課金（チャット入力で奢った場合）
   // ※ボタンで奢った場合（item_yes）は二重課金防止のためスキップ
   if (params.bill_increase > 0 && actionType !== "item_yes") {
-    gameState.bill   += params.bill_increase;
-    gameState.wallet  = BUDGET - gameState.bill;
+    gameState.bill += params.bill_increase;
+    gameState.wallet = BUDGET - gameState.bill;
     // エフェクト表示（「今ねだっていた商品」を優先。item_nameは次のおねだりが混入するため使わない）
     const effectName = gameState.lastItemName || `¥${params.bill_increase.toLocaleString()}分`;
     const effectPrice = gameState.lastItemPrice || params.bill_increase;
@@ -391,21 +391,21 @@ async function showEnding(mode) {
   // エンディングタイプの決定
   if (mode === "FORCE_SALT") {
     endType = "FORCE_SALT";
-    story   = "もう、げんちゃんサイテー！！話したくないヨ！次のお客さん来たから早く帰って！バイバイ！！";
+    story = "もう、げんちゃんサイテー！！話したくないヨ！次のお客さん来たから早く帰って！バイバイ！！";
   } else if (mode === "BANKRUPT") {
     endType = "BANKRUPT";
-    story   = "あ、げんちゃん…もうお財布空っぽ？ママ〜、げんちゃんお会計だって！ちょっと怖いお兄さんも呼んでネ……";
+    story = "あ、げんちゃん…もうお財布空っぽ？ママ〜、げんちゃんお会計だって！ちょっと怖いお兄さんも呼んでネ……";
   } else {
     // スコアと所持金で最終判定 (JUDGE)
     if (gameState.score >= 100 && gameState.bill <= BUDGET) {
       endType = "SUCCESS";
-      story   = "げんちゃん、今日最高に楽しかったヨ！外で待ってるから、一緒に美味しいもの食べに行こうネ？二人だけの内緒だヨ❤️";
+      story = "げんちゃん、今日最高に楽しかったヨ！外で待ってるから、一緒に美味しいもの食べに行こうネ？二人だけの内緒だヨ❤️";
     } else if (gameState.bill > BUDGET) {
       endType = "BANKRUPT";
-      story   = "あ、げんちゃん…もうお財布空っぽ？ママ〜、げんちゃんお会計だって！ちょっと怖いお兄さんも呼んでネ……";
+      story = "あ、げんちゃん…もうお財布空っぽ？ママ〜、げんちゃんお会計だって！ちょっと怖いお兄さんも呼んでネ……";
     } else {
       endType = "SALTEND";
-      story   = "今日はありがとネ。げんちゃんと話せて良かったヨ。またお金貯まったら遊びに来てネ。お疲れ様〜！";
+      story = "今日はありがとネ。げんちゃんと話せて良かったヨ。またお金貯まったら遊びに来てネ。お疲れ様〜！";
     }
   }
 
@@ -432,13 +432,13 @@ async function showEnding(mode) {
   const ending = endings[endType] || endings.SALTEND;
 
   // DOMに反映
-  $('ending-badge').textContent        = ending.badge;
-  $('ending-title').textContent        = ending.title;
-  $('ending-title').style.color        = ending.titleColor;
-  $('ending-story').textContent        = story;
-  $('final-bill').textContent          = `¥${gameState.bill.toLocaleString()}`;
-  $('final-wallet').textContent        = `¥${Math.max(0, gameState.wallet).toLocaleString()}`;
-  $('final-score').textContent         = `${gameState.score} / 999`;
+  $('ending-badge').textContent = ending.badge;
+  $('ending-title').textContent = ending.title;
+  $('ending-title').style.color = ending.titleColor;
+  $('ending-story').textContent = story;
+  $('final-bill').textContent = `¥${gameState.bill.toLocaleString()}`;
+  $('final-wallet').textContent = `¥${Math.max(0, gameState.wallet).toLocaleString()}`;
+  $('final-score').textContent = `${gameState.score} / 999`;
   $('ending-bg').style.backgroundImage = `url('${ending.bgImage}')`;
 
   // 🎵 メインBGMを停止
@@ -451,7 +451,7 @@ async function showEnding(mode) {
     // 動画を表示して再生
     endingVideo.style.display = 'block';
     endingVideo.currentTime = 0;
-    endingVideo.play().catch(() => {}); // 自動再生ブロックの対策
+    endingVideo.play().catch(() => { }); // 自動再生ブロックの対策
     // 成功エンドは背景画像を非表示
     $('ending-bg').style.display = 'none';
 
@@ -473,7 +473,7 @@ async function showEnding(mode) {
     $('ending-bg').style.display = '';
     endingScreen.classList.remove('cinematic');
     document.querySelector('.ending-content').classList.remove('show');
-    
+
     // 🎵 バッドエンド用BGMを再生
     const bgmBadend = document.getElementById('bgm-badend');
     if (bgmBadend) { bgmBadend.currentTime = 0; bgmBadend.play().catch(e => console.log("Audio play blocked", e)); }
@@ -489,7 +489,7 @@ async function startGame() {
   // 🎬 リトライ時に動画・オーディオをリセット
   const endingVideo = document.getElementById('ending-video');
   if (endingVideo) {
-    try { endingVideo.pause(); } catch(e) {}
+    try { endingVideo.pause(); } catch (e) { }
     endingVideo.style.display = 'none';
   }
   $('ending-bg').style.display = '';
@@ -497,10 +497,10 @@ async function startGame() {
   document.querySelector('.ending-content').classList.remove('show');
   const bgm = document.getElementById('ending-bgm');
   if (bgm) { bgm.pause(); bgm.currentTime = 0; }
-  
+
   const bgmBadend = document.getElementById('bgm-badend');
   if (bgmBadend) { bgmBadend.pause(); bgmBadend.currentTime = 0; }
-  
+
   const bgmTitle = document.getElementById('bgm-title');
   if (bgmTitle) bgmTitle.pause();
 
@@ -553,7 +553,7 @@ $('start-btn').addEventListener('click', startGame);
 document.addEventListener('click', () => {
   const bgmTitle = document.getElementById('bgm-title');
   if (titleScreen.classList.contains('active') && bgmTitle && bgmTitle.paused) {
-    bgmTitle.play().catch(() => {});
+    bgmTitle.play().catch(() => { });
   }
 }, { once: true });
 $('retry-btn').addEventListener('click', resetGame);
