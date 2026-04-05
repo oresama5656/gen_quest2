@@ -648,6 +648,63 @@ html, body {
   to   { text-shadow: 0 0 25px var(--neon-pink), 0 0 50px var(--neon-pink); }
 }
 
+/* =====================================================
+   シネマティックエンディング（アフター成功専用）
+   ===================================================== */
+#ending-screen.cinematic {
+  justify-content: flex-end;
+  padding: 0;
+}
+#ending-screen.cinematic .ending-overlay {
+  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.95) 100%) !important;
+}
+#ending-screen.cinematic .ending-content {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 0;
+  border: none;
+  border-top: 1px solid rgba(255,215,0,0.4);
+  background: rgba(5,0,10,0.9);
+  padding: 1.5rem 1rem 2.5rem;
+  box-shadow: 0 -20px 50px rgba(0,0,0,0.9);
+  animation: none; /* override ending-appear */
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(30px);
+  transition: opacity 1.5s ease, transform 1.5s ease;
+}
+#ending-screen.cinematic .ending-content.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+#ending-screen.cinematic .ending-badge {
+  display: none;
+}
+#ending-screen.cinematic .ending-title {
+  font-size: 1.2rem;
+  color: var(--neon-gold) !important;
+  text-align: left;
+  width: 100%;
+  text-shadow: 0 0 15px var(--neon-gold);
+  margin-bottom: -0.5rem;
+}
+#ending-screen.cinematic .ending-stats {
+  flex-direction: row;
+  justify-content: space-around;
+  background: transparent;
+  padding: 0;
+  gap: 0;
+}
+#ending-screen.cinematic .stat-row {
+  flex-direction: column;
+  border: none;
+  gap: 0.2rem;
+}
+#ending-screen.cinematic .stat-row span:last-child {
+  font-size: 1.1rem;
+}
+
 /* スクロールバー非表示 */
 ::-webkit-scrollbar { display: none; }
 
